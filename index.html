@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DevTune — Instant Game OST</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ══════════════════════════════════════
+       RESET + ROOT
+    ══════════════════════════════════════ */
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;image-rendering:pixelated}
+    :root{
+      --black:#050508;
+      --dark:#0a0c14;
+      --panel:#0e1120;
+      --panel2:#131625;
+      --border:#1e2540;
+      --neon-green:#39ff8f;
+      --neon-pink:#ff2d9f;
+      --neon-cyan:#00eeff;
+      --neon-yellow:#ffe600;
+      --neon-purple:#bf5fff;
+      --dim-green:rgba(57,255,143,0.12);
+      --dim-pink:rgba(255,45,159,0.12);
+      --dim-cyan:rgba(0,238,255,0.12);
+      --txt:#e0e8ff;
+      --txt-dim:#4a5580;
+      --txt-mid:#8899cc;
+      --px:'Press Start 2P',monospace;
+      --vt:'VT323',monospace;
+    }
+
+    html,body{
+      min-height:100%;
+      background:var(--black);
+      color:var(--txt);
+      font-family:var(--vt);
+      font-size:18px;
+      line-height:1.4;
+      overflow-x:hidden;
+      cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect x='0' y='0' width='8' height='8' fill='%2339ff8f'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%2339ff8f'/%3E%3C/svg%3E") 4 4, crosshair;
+    }
+
+    /* CRT scanlines overlay */
+    body::before{
+      content:'';
+      position:fixed;inset:0;z-index:9999;
+      background:repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events:none;
+    }
+
+    /* Pixel grid bg */
+    body::after{
+      content:'';
+      position:fixed;inset:0;z-index:0;
+      background-image:
+        linear-gradient(rgba(57,255,143,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(57,255,143,0.015) 1px, transparent 1px);
+      background-size:16px 16px;
+      pointer-events:none;
+    }
+
+    .app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
+
+    /* ══ PIXEL BORDER MIXIN ══ */
+    .px-box{
+      border:2px solid var(--border);
+      box-shadow:
+        inset 0 0 0 1px rgba(57,255,143,0.04),
+        4px 4px 0 rgba(0,0,0,0.5);
+      image-rendering:pixelated;
+    }
+    .px-box-green{
+      border:2px solid var(--neon-green);
+      box-shadow:
+        0 0 0 1px var(--neon-green),
+        4px 4px 0 rgba(57,255,143,0.2),
+        inset 0 0 20px rgba(57,255,143,0.04);
+    }
+    .px-box-pink{
+      border:2px solid var(--neon-pink);
+      box-shadow:
+        0 0 0 1px var(--neon-pink),
+        4px 4px 0 rgba(255,45,159,0.2),
+        inset 0 0 20px rgba(255,45,159,0.04);
+    }
+    .px-box-cyan{
+      border:2px solid var(--neon-cyan);
+      box-shadow:
+        0 0 0 1px var(--neon-cyan),
+        4px 4px 0 rgba(0,238,255,0.2),
+        inset 0 0 20px rgba(0,238,255,0.04);
+    }
+
+    /* ══════════════════════════════════════
+       HEADER
+    ══════════════════════════════════════ */
+    .header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 24px;height:64px;
+      background:var(--dark);
+      border-bottom:2px solid var(--neon-green);
+      box-shadow:0 2px 0 rgba(57,255,143,0.1), 0 4px 20px rgba(57,255,143,0.05);
+      position:sticky;top:0;z-index:100;
+      flex-shrink:0;
+    }
+    .logo{display:flex;align-items:center;gap:16px}
+    .logo-sprite{
+      width:32px;height:32px;flex-shrink:0;
+      /* 8-bit music note sprite using box-shadow */
+      position:relative;
+    }
+    .logo-sprite::before{
+      content:'♪';
+      font-family:var(--px);
+      font-size:20px;
+      color:var(--neon-green);
+      text-shadow:0 0 10px var(--neon-green),0 0 20px var(--neon-green);
+      animation:blink 1.5s step-end infinite;
+    }
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0.4}}
+    .logo-text{
+      font-family:var(--px);font-size:14px;
+      color:var(--neon-green);
+      text-shadow:0 0 8px var(--neon-green),0 0 16px rgba(57,255,143,0.4);
+      letter-spacing:2px;
+    }
+    .logo-text span{color:var(--neon-pink);text-shadow:0 0 8px var(--neon-pink)}
+    .logo-tag{
+      font-family:var(--px);font-size:6px;
+      color:var(--txt-dim);letter-spacing:1px;
+      border:1px solid var(--border);
+      padding:3px 6px;
+      margin-left:4px;
+    }
+    .header-center{display:flex;align-items:center;gap:8px}
+    .insert-coin{
+      font-family:var(--px);font-size:7px;
+      color:var(--neon-yellow);
+      text-shadow:0 0 6px var(--neon-yellow);
+      animation:flash 1s step-end infinite;
+      letter-spacing:1px;
+    }
+    @keyframes flash{0%,100%{opacity:1}50%{opacity:0}}
+    .header-right{display:flex;align-items:center;gap:8px}
+    .px-btn{
+      font-family:var(--px);font-size:8px;
+      background:var(--panel);
+      border:2px solid var(--border);
+      color:var(--txt-mid);
+      padding:8px 12px;
+      cursor:pointer;
+      transition:all 0.1s;
+      letter-spacing:1px;
+      box-shadow:2px 2px 0 rgba(0,0,0,0.5);
+    }
+    .px-btn:hover{
+      border-color:var(--neon-cyan);color:var(--neon-cyan);
+      box-shadow:2px 2px 0 var(--neon-cyan);
+      background:var(--dim-cyan);
+    }
+    .px-btn:active{transform:translate(2px,2px);box-shadow:none}
+
+    /* ══════════════════════════════════════
+       HERO
+    ══════════════════════════════════════ */
+    .hero{
+      text-align:center;padding:48px 24px 36px;
+      position:relative;overflow:hidden;
+    }
+    .hero-deco{
+      position:absolute;top:0;left:0;right:0;bottom:0;
+      pointer-events:none;overflow:hidden;
+    }
+    /* Pixel star decorations */
+    .hero-deco::before,.hero-deco::after{
+      content:'★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★';
+      position:absolute;font-size:8px;
+      color:rgba(57,255,143,0.08);
+      letter-spacing:20px;white-space:nowrap;
+    }
+    .hero-deco::before{top:10px;left:-20px;animation:scroll 20s linear infinite}
+    .hero-deco::after{bottom:10px;left:-20px;animation:scroll 15s linear infinite reverse}
+    @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+    .hero-tag{
+      display:inline-block;
+      font-family:var(--px);font-size:7px;
+      color:var(--neon-cyan);
+      border:2px solid var(--neon-cyan);
+      padding:6px 14px;margin-bottom:24px;
+      box-shadow:0 0 10px rgba(0,238,255,0.2),2px 2px 0 rgba(0,238,255,0.3);
+      letter-spacing:2px;
+    }
+    .hero h1{
+      font-family:var(--px);
+      font-size:clamp(16px,3vw,28px);
+      line-height:1.6;
+      margin-bottom:16px;
+      letter-spacing:2px;
+    }
+    .hero h1 .line1{color:var(--txt)}
+    .hero h1 .line2{
+      color:var(--neon-green);
+      text-shadow:0 0 10px var(--neon-green),0 0 20px rgba(57,255,143,0.3);
+    }
+    .hero p{
+      font-family:var(--vt);font-size:20px;
+      color:var(--txt-mid);max-width:520px;margin:0 auto;
+      line-height:1.6;
+    }
+
+    /* ══════════════════════════════════════
+       MAIN LAYOUT
+    ══════════════════════════════════════ */
+    .main{display:grid;grid-template-columns:1fr 380px;flex:1;min-height:0}
+
+    /* ══════════════════════════════════════
+       LEFT PANEL
+    ══════════════════════════════════════ */
+    .left{
+      padding:24px;
+      border-right:2px solid var(--border);
+      display:flex;flex-direction:column;gap:16px;
+      overflow-y:auto;
+    }
+
+    /* Section headers */
+    .sect-hd{
+      font-family:var(--px);font-size:8px;
+      color:var(--neon-pink);letter-spacing:2px;
+      margin-bottom:2px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .sect-hd::after{content:'';flex:1;height:1px;background:linear-gradient(to right,rgba(255,45,159,0.3),transparent)}
+
+    /* Upload zone */
+    .upload-zone{
+      background:var(--panel);
+      border:2px dashed var(--border);
+      padding:36px 20px;text-align:center;
+      cursor:pointer;position:relative;
+      transition:all 0.1s;
+    }
+    .upload-zone:hover,.upload-zone.drag{
+      border-color:var(--neon-green);
+      background:var(--dim-green);
+      box-shadow:0 0 0 1px var(--neon-green), inset 0 0 30px rgba(57,255,143,0.05);
+    }
+    #fileInput{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .upload-icon{
+      font-size:36px;display:block;margin-bottom:12px;
+      animation:float 3s ease-in-out infinite;
+    }
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+    .upload-title{
+      font-family:var(--px);font-size:9px;
+      color:var(--txt);margin-bottom:8px;letter-spacing:1px;
+    }
+    .upload-sub{font-size:16px;color:var(--txt-dim)}
+    .upload-formats{display:flex;justify-content:center;gap:6px;margin-top:12px;flex-wrap:wrap}
+    .fmt{
+      font-family:var(--px);font-size:6px;
+      padding:3px 7px;
+      border:1px solid var(--border);
+      color:var(--txt-dim);
+      background:var(--panel2);
+    }
+
+    /* File loaded card */
+    .file-card{
+      display:none;
+      background:var(--panel);border:2px solid var(--neon-green);
+      padding:14px;align-items:center;gap:12px;
+      box-shadow:0 0 0 1px var(--neon-green),4px 4px 0 rgba(57,255,143,0.15);
+    }
+    .file-card.show{display:flex}
+    .file-card-icon{font-size:28px;flex-shrink:0}
+    .file-card-info{flex:1;min-width:0}
+    .file-card-name{font-family:var(--px);font-size:8px;color:var(--neon-green);margin-bottom:4px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .file-card-meta{font-size:14px;color:var(--txt-dim)}
+    .file-remove{
+      background:none;border:1px solid var(--border);
+      color:var(--txt-dim);cursor:pointer;
+      font-family:var(--px);font-size:8px;padding:5px 8px;
+      transition:all .1s;
+    }
+    .file-remove:hover{border-color:var(--neon-pink);color:var(--neon-pink)}
+
+    /* Code preview */
+    .code-box{
+      display:none;
+      background:var(--black);border:2px solid var(--border);
+      padding:12px;
+      font-family:var(--vt);font-size:14px;
+      color:rgba(57,255,143,0.6);
+      max-height:140px;overflow-y:auto;
+      line-height:1.6;white-space:pre-wrap;word-break:break-all;
+    }
+    .code-box.show{display:block}
+    .code-box::-webkit-scrollbar{width:4px}
+    .code-box::-webkit-scrollbar-thumb{background:var(--neon-green);box-shadow:none}
+
+    /* Status */
+    .status-box{
+      display:none;
+      padding:10px 14px;border:2px solid;
+      font-family:var(--px);font-size:7px;letter-spacing:1px;
+      align-items:center;gap:10px;
+    }
+    .status-box.show{display:flex}
+    .status-box.info{border-color:var(--neon-cyan);color:var(--neon-cyan);background:var(--dim-cyan)}
+    .status-box.success{border-color:var(--neon-green);color:var(--neon-green);background:var(--dim-green)}
+    .status-box.error{border-color:var(--neon-pink);color:var(--neon-pink);background:var(--dim-pink)}
+    .px-spin{
+      width:14px;height:14px;border:2px solid currentColor;
+      border-top-color:transparent;border-radius:0;
+      animation:pxSpin .6s steps(8) infinite;flex-shrink:0;
+    }
+    @keyframes pxSpin{to{transform:rotate(360deg)}}
+
+    /* Main action buttons */
+    .big-btn{
+      width:100%;padding:16px;
+      font-family:var(--px);font-size:9px;letter-spacing:2px;
+      border:2px solid;cursor:pointer;
+      transition:all 0.1s;
+      box-shadow:4px 4px 0;
+      position:relative;
+    }
+    .big-btn:active{transform:translate(4px,4px);box-shadow:none}
+    .big-btn:disabled{opacity:0.35;cursor:not-allowed;transform:none!important;box-shadow:4px 4px 0!important}
+    .big-btn-cyan{
+      background:var(--dim-cyan);border-color:var(--neon-cyan);color:var(--neon-cyan);
+      box-shadow-color:rgba(0,238,255,0.3);box-shadow:4px 4px 0 rgba(0,238,255,0.25);
+    }
+    .big-btn-cyan:hover:not(:disabled){background:rgba(0,238,255,0.18);box-shadow:4px 4px 0 var(--neon-cyan)}
+    .big-btn-green{
+      background:var(--dim-green);border-color:var(--neon-green);color:var(--neon-green);
+      box-shadow:4px 4px 0 rgba(57,255,143,0.25);
+    }
+    .big-btn-green:hover:not(:disabled){background:rgba(57,255,143,0.18);box-shadow:4px 4px 0 var(--neon-green)}
+
+    /* Progress bar */
+    .prog-wrap{display:none;margin-top:4px}
+    .prog-wrap.show{display:block}
+    .prog-label{font-family:var(--px);font-size:7px;color:var(--txt-dim);margin-bottom:6px;letter-spacing:1px}
+    .prog-track{
+      width:100%;height:16px;
+      background:var(--panel);border:2px solid var(--border);
+      position:relative;overflow:hidden;
+    }
+    .prog-fill{
+      height:100%;background:var(--neon-green);
+      width:0%;transition:width .4s steps(20);
+      box-shadow:0 0 8px var(--neon-green);
+      position:relative;
+    }
+    /* Pixel checker pattern on fill */
+    .prog-fill::after{
+      content:'';position:absolute;inset:0;
+      background-image:repeating-linear-gradient(
+        90deg,transparent,transparent 6px,rgba(0,0,0,0.3) 6px,rgba(0,0,0,0.3) 8px
+      );
+    }
+    .prog-text{font-family:var(--px);font-size:7px;color:var(--txt-dim);text-align:right;margin-top:4px;letter-spacing:1px}
+
+    /* Analysis card */
+    .analysis-card{display:none;background:var(--panel);border:2px solid var(--border)}
+    .analysis-card.show{display:block}
+    .analysis-hd{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px 14px;border-bottom:2px solid var(--border);
+    }
+    .analysis-hd-title{font-family:var(--px);font-size:8px;color:var(--txt);letter-spacing:1px}
+    .genre-pill{
+      font-family:var(--px);font-size:7px;
+      padding:4px 10px;border:2px solid var(--neon-purple);
+      color:var(--neon-purple);background:rgba(191,95,255,0.1);
+      box-shadow:2px 2px 0 rgba(191,95,255,0.2);
+      text-shadow:0 0 6px var(--neon-purple);
+    }
+    .scenes-list{padding:12px;display:flex;flex-direction:column;gap:8px}
+
+    /* Scene item */
+    .scene-item{
+      background:var(--panel2);border:2px solid var(--border);
+      padding:10px 12px;display:flex;align-items:center;gap:12px;
+      transition:all 0.1s;position:relative;overflow:hidden;
+    }
+    .scene-item::before{
+      content:'▶';
+      position:absolute;left:-20px;
+      font-family:var(--px);font-size:8px;color:var(--neon-green);
+      transition:left 0.1s;
+    }
+    .scene-item:hover{border-color:var(--neon-green);padding-left:24px}
+    .scene-item:hover::before{left:6px}
+    .scene-item.generating{border-color:var(--neon-cyan);animation:borderPulse 1s ease-in-out infinite}
+    @keyframes borderPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,238,255,0.3)}50%{box-shadow:0 0 0 4px rgba(0,238,255,0.1)}}
+    .scene-item.done{border-color:var(--neon-green)}
+    .scene-item.queued{opacity:0.5}
+    .si-emoji{font-size:22px;flex-shrink:0;width:28px;text-align:center}
+    .si-info{flex:1;min-width:0}
+    .si-name{font-family:var(--px);font-size:7px;color:var(--txt);letter-spacing:1px;margin-bottom:4px}
+    .si-desc{font-size:14px;color:var(--txt-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .si-status{font-family:var(--px);font-size:7px;flex-shrink:0}
+    .si-status.queued{color:var(--txt-dim)}
+    .si-status.generating{color:var(--neon-cyan);text-shadow:0 0 6px var(--neon-cyan)}
+    .si-status.done{color:var(--neon-green);text-shadow:0 0 6px var(--neon-green)}
+    .si-play{
+      display:none;
+      font-family:var(--px);font-size:6px;
+      border:1px solid var(--border);background:transparent;
+      color:var(--txt-mid);padding:4px 8px;cursor:pointer;
+      transition:all .1s;
+    }
+    .si-play.show{display:block}
+    .si-play:hover{border-color:var(--neon-green);color:var(--neon-green)}
+
+    /* Intensity bar */
+    .intensity-bar{
+      width:40px;height:6px;background:var(--border);flex-shrink:0;position:relative;overflow:hidden;
+    }
+    .intensity-fill{height:100%;transition:width .3s}
+
+    /* ══════════════════════════════════════
+       RIGHT PANEL
+    ══════════════════════════════════════ */
+    .right{
+      padding:20px;display:flex;flex-direction:column;gap:16px;
+      overflow-y:auto;max-height:calc(100vh - 64px);
+      position:sticky;top:64px;
+    }
+
+    /* Player */
+    .player-card{
+      background:var(--panel);
+      border:2px solid var(--neon-pink);
+      box-shadow:0 0 0 1px var(--neon-pink),4px 4px 0 rgba(255,45,159,0.2),
+        inset 0 0 30px rgba(255,45,159,0.03);
+      padding:18px;
+    }
+    .player-hd{
+      font-family:var(--px);font-size:7px;color:var(--neon-pink);
+      letter-spacing:2px;margin-bottom:14px;
+      text-shadow:0 0 6px var(--neon-pink);
+      display:flex;align-items:center;gap:6px;
+    }
+    .player-hd::before{content:'♫';font-size:10px;animation:blink 2s step-end infinite}
+
+    /* Album art */
+    .album-art{
+      width:100%;aspect-ratio:1;max-width:200px;
+      margin:0 auto 16px;
+      background:var(--black);border:2px solid var(--border);
+      display:flex;align-items:center;justify-content:center;
+      position:relative;overflow:hidden;
+    }
+    .album-art-bg{
+      position:absolute;inset:0;
+      background:
+        repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(57,255,143,0.03) 3px,rgba(57,255,143,0.03) 4px),
+        repeating-linear-gradient(90deg,transparent,transparent 3px,rgba(57,255,143,0.03) 3px,rgba(57,255,143,0.03) 4px);
+    }
+    .album-emoji{font-size:64px;position:relative;z-index:1;transition:opacity .4s}
+    .album-wave{
+      position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      gap:3px;z-index:2;opacity:0;transition:opacity .4s;
+    }
+    .album-wave.play{opacity:1}
+    .album-wave.play~.album-emoji{opacity:0}
+    .aw{
+      width:4px;background:var(--neon-green);
+      box-shadow:0 0 6px var(--neon-green);
+      animation:aw .6s steps(4) infinite;
+    }
+    .aw:nth-child(1){height:16px;animation-delay:0s}
+    .aw:nth-child(2){height:28px;animation-delay:.1s}
+    .aw:nth-child(3){height:40px;animation-delay:.2s}
+    .aw:nth-child(4){height:28px;animation-delay:.1s}
+    .aw:nth-child(5){height:16px;animation-delay:0s}
+    @keyframes aw{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+
+    /* Corner decorations on album art */
+    .album-art::before,.album-art::after{
+      content:'';position:absolute;width:12px;height:12px;
+      border-color:var(--neon-pink);border-style:solid;z-index:3;
+    }
+    .album-art::before{top:4px;left:4px;border-width:2px 0 0 2px}
+    .album-art::after{bottom:4px;right:4px;border-width:0 2px 2px 0}
+
+    .track-name{
+      font-family:var(--px);font-size:9px;color:var(--txt);
+      text-align:center;margin-bottom:4px;letter-spacing:1px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    }
+    .track-meta{font-size:15px;color:var(--txt-dim);text-align:center;margin-bottom:14px}
+
+    /* Progress */
+    .prg-track{
+      width:100%;height:10px;background:var(--black);
+      border:2px solid var(--border);cursor:pointer;margin-bottom:4px;
+      position:relative;overflow:hidden;
+    }
+    .prg-fill{
+      height:100%;background:var(--neon-pink);
+      width:0%;transition:width .4s linear;
+      box-shadow:0 0 6px var(--neon-pink);
+    }
+    .prg-fill::after{
+      content:'';position:absolute;right:0;top:0;bottom:0;
+      width:3px;background:white;box-shadow:0 0 4px white;
+    }
+    .time-row{display:flex;justify-content:space-between;font-family:var(--px);font-size:6px;color:var(--txt-dim);margin-bottom:14px}
+
+    /* Controls */
+    .ctrl-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px}
+    .ctrl{
+      background:var(--panel2);border:2px solid var(--border);
+      color:var(--txt-mid);font-size:14px;cursor:pointer;
+      width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+      transition:all .1s;box-shadow:2px 2px 0 rgba(0,0,0,0.5);
+      font-family:var(--px);
+    }
+    .ctrl:hover{border-color:var(--neon-cyan);color:var(--neon-cyan);box-shadow:2px 2px 0 var(--neon-cyan)}
+    .ctrl:active{transform:translate(2px,2px);box-shadow:none}
+    .play-ctrl{
+      background:var(--neon-pink);border:2px solid var(--neon-pink);
+      color:var(--black);width:48px;height:48px;
+      font-size:18px;font-family:var(--px);
+      box-shadow:0 0 12px var(--neon-pink),4px 4px 0 rgba(255,45,159,0.3);
+    }
+    .play-ctrl:hover{background:white;border-color:white;box-shadow:0 0 20px white,4px 4px 0 rgba(255,255,255,0.3)}
+
+    /* Volume */
+    .vol-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+    .vi{font-size:12px;color:var(--txt-dim);font-family:var(--px);font-size:8px}
+    input.vol{
+      flex:1;height:8px;-webkit-appearance:none;
+      background:var(--black);border:2px solid var(--border);
+      outline:none;cursor:pointer;
+    }
+    input.vol::-webkit-slider-thumb{
+      -webkit-appearance:none;width:12px;height:16px;
+      background:var(--neon-pink);cursor:pointer;
+      box-shadow:0 0 6px var(--neon-pink);
+    }
+    audio{display:none}
+
+    /* ── OST LIBRARY ── */
+    .lib-hd{display:flex;align-items:center;justify-content:space-between}
+    .lib-title{font-family:var(--px);font-size:8px;color:var(--neon-cyan);letter-spacing:1px;text-shadow:0 0 6px var(--neon-cyan)}
+    .lib-cnt{
+      font-family:var(--px);font-size:7px;color:var(--txt-dim);
+      border:1px solid var(--border);padding:3px 8px;
+    }
+    .track-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+    .ti{
+      background:var(--panel2);border:2px solid var(--border);
+      padding:9px 11px;cursor:pointer;
+      display:flex;align-items:center;gap:10px;
+      transition:all .1s;position:relative;
+    }
+    .ti::before{
+      content:'▶';position:absolute;left:-16px;
+      font-family:var(--px);font-size:7px;color:var(--neon-cyan);
+      transition:left .1s;
+    }
+    .ti:hover{border-color:var(--neon-cyan);padding-left:18px}
+    .ti:hover::before{left:4px}
+    .ti.active{border-color:var(--neon-pink);background:var(--dim-pink)}
+    .ti-emoji{font-size:18px;flex-shrink:0;width:24px;text-align:center}
+    .ti-info{flex:1;min-width:0}
+    .ti-name{font-family:var(--px);font-size:7px;color:var(--txt);letter-spacing:.5px;margin-bottom:3px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ti-meta{font-size:13px;color:var(--txt-dim)}
+    .ti-dl{
+      background:none;border:1px solid var(--border);
+      color:var(--txt-dim);cursor:pointer;padding:3px 6px;
+      font-family:var(--px);font-size:7px;transition:all .1s;
+    }
+    .ti-dl:hover{border-color:var(--neon-green);color:var(--neon-green)}
+
+    .empty-lib{
+      padding:24px;text-align:center;
+      font-size:16px;color:var(--txt-dim);
+      border:2px dashed var(--border);
+    }
+    .empty-lib-px{font-family:var(--px);font-size:7px;color:var(--txt-dim);display:block;margin-bottom:8px}
+
+    /* Export */
+    .export-btn{
+      width:100%;padding:12px;
+      font-family:var(--px);font-size:7px;letter-spacing:1px;
+      background:transparent;border:2px solid var(--border);color:var(--txt-dim);
+      cursor:pointer;transition:all .1s;box-shadow:2px 2px 0 rgba(0,0,0,0.5);
+    }
+    .export-btn:hover{border-color:var(--neon-yellow);color:var(--neon-yellow);
+      box-shadow:2px 2px 0 var(--neon-yellow);text-shadow:0 0 6px var(--neon-yellow)}
+
+    /* Config panel */
+    .cfg-panel{
+      display:none;position:fixed;top:72px;right:16px;width:320px;
+      background:var(--dark);border:2px solid var(--neon-cyan);
+      padding:18px;z-index:200;
+      box-shadow:0 0 0 1px var(--neon-cyan),8px 8px 0 rgba(0,238,255,0.15),0 20px 40px rgba(0,0,0,0.8);
+    }
+    .cfg-panel.show{display:block}
+    .cfg-title{font-family:var(--px);font-size:9px;color:var(--neon-cyan);margin-bottom:14px;letter-spacing:1px}
+    .cfg-close{
+      position:absolute;top:10px;right:10px;
+      background:none;border:1px solid var(--border);color:var(--txt-dim);
+      cursor:pointer;font-family:var(--px);font-size:8px;padding:3px 7px;
+    }
+    .cfg-close:hover{border-color:var(--neon-pink);color:var(--neon-pink)}
+    .cfg-label{font-family:var(--px);font-size:6px;color:var(--txt-dim);letter-spacing:1px;margin:10px 0 5px}
+    .ki{
+      width:100%;padding:8px 10px;margin-bottom:6px;
+      background:var(--black);border:2px solid var(--border);
+      color:var(--neon-green);font-family:var(--vt);font-size:16px;
+      outline:none;transition:border-color .1s;
+    }
+    .ki:focus{border-color:var(--neon-cyan)}
+    .ki::placeholder{color:var(--txt-dim)}
+    .sv-btn{
+      width:100%;padding:10px;margin-top:6px;
+      font-family:var(--px);font-size:8px;letter-spacing:1px;
+      background:var(--neon-green);border:2px solid var(--neon-green);
+      color:var(--black);cursor:pointer;
+      box-shadow:4px 4px 0 rgba(57,255,143,0.3);
+      transition:all .1s;
+    }
+    .sv-btn:active{transform:translate(4px,4px);box-shadow:none}
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{width:6px}
+    ::-webkit-scrollbar-track{background:var(--black)}
+    ::-webkit-scrollbar-thumb{background:var(--neon-green);box-shadow:0 0 4px var(--neon-green)}
+
+    @media(max-width:900px){
+      .main{grid-template-columns:1fr}
+      .right{position:static;max-height:none}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-sprite"></div>
+      <div class="logo-text">Dev<span>Tune</span></div>
+      <div class="logo-tag">v1.0</div>
+    </div>
+    <div class="header-center">
+      <div class="insert-coin">▶ INSERT COIN TO COMPOSE ◀</div>
+    </div>
+    <div class="header-right">
+      <button class="px-btn" id="cfgBtn">[ ⚙ CONFIG ]</button>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-deco"></div>
+    <div class="hero-tag">✦ POWERED BY GEMINI + LYRIA ✦</div>
+    <h1>
+      <span class="line1">UPLOAD YOUR GAME CODE.</span><br>
+      <span class="line2">GET AN INSTANT OST.</span>
+    </h1>
+    <p>DevTune reads your code, finds every scene and mood, then composes a full original soundtrack with Google Lyria — no composer needed.</p>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- LEFT -->
+    <div class="left">
+
+      <div class="sect-hd">STEP 1 // UPLOAD CODE</div>
+
+      <!-- Upload zone -->
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".js,.ts,.py,.cs,.cpp,.c,.html,.json,.txt,.gd" multiple/>
+        <span class="upload-icon">📁</span>
+        <div class="upload-title">DROP YOUR GAME CODE HERE</div>
+        <div class="upload-sub">or click to browse — any language</div>
+        <div class="upload-formats">
+          <span class="fmt">.JS</span><span class="fmt">.TS</span><span class="fmt">.PY</span>
+          <span class="fmt">.CS</span><span class="fmt">.CPP</span><span class="fmt">.GD</span><span class="fmt">.HTML</span>
+        </div>
+      </div>
+
+      <!-- File loaded -->
+      <div class="file-card" id="fileCard">
+        <div class="file-card-icon">📄</div>
+        <div class="file-card-info">
+          <div class="file-card-name" id="fileName">game.js</div>
+          <div class="file-card-meta" id="fileMeta">0 lines</div>
+        </div>
+        <button class="file-remove" id="fileRemove">[✕]</button>
+      </div>
+
+      <!-- Code preview -->
+      <div class="code-box" id="codePreview"></div>
+
+      <!-- Status -->
+      <div class="status-box" id="statusBox">
+        <div class="px-spin" id="statusSpin" style="display:none"></div>
+        <span id="statusText">READY</span>
+      </div>
+
+      <div class="sect-hd">STEP 2 // ANALYZE</div>
+
+      <!-- Analyze button -->
+      <button class="big-btn big-btn-cyan" id="analyzeBtn" disabled>
+        [ 🔍 ANALYZE CODE — FIND SCENES ]
+      </button>
+
+      <!-- Analysis -->
+      <div class="analysis-card" id="analysisCard">
+        <div class="analysis-hd">
+          <div class="analysis-hd-title" id="analysisTitle">SCENES DETECTED</div>
+          <div class="genre-pill" id="genrePill">GAME</div>
+        </div>
+        <div class="scenes-list" id="scenesList"></div>
+      </div>
+
+      <div class="sect-hd" id="step3hd" style="display:none">STEP 3 // COMPOSE OST</div>
+
+      <!-- Progress -->
+      <div class="prog-wrap" id="progWrap">
+        <div class="prog-label" id="progLabel">GENERATING... 0 / 0</div>
+        <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+        <div class="prog-text" id="progText">0%</div>
+      </div>
+
+      <!-- Generate all -->
+      <button class="big-btn big-btn-green" id="genAllBtn" style="display:none">
+        [ 🎵 GENERATE FULL OST ]
+      </button>
+
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right">
+
+      <!-- Player -->
+      <div class="player-card">
+        <div class="player-hd">NOW PLAYING</div>
+
+        <div class="album-art" id="albumArt">
+          <div class="album-art-bg"></div>
+          <div class="album-wave" id="albumWave">
+            <div class="aw"></div><div class="aw"></div><div class="aw"></div>
+            <div class="aw"></div><div class="aw"></div>
+          </div>
+          <div class="album-emoji" id="albumEmoji">🎵</div>
+        </div>
+
+        <div class="track-name" id="trackName">-- NO TRACK LOADED --</div>
+        <div class="track-meta" id="trackMeta">Upload your code to get started</div>
+
+        <div class="prg-track" id="prgTrack">
+          <div class="prg-fill" id="prgFill2"></div>
+        </div>
+        <div class="time-row"><span id="tCur">0:00</span><span id="tTot">0:00</span></div>
+
+        <div class="ctrl-row">
+          <button class="ctrl" id="rstBtn">⏮</button>
+          <button class="ctrl play-ctrl" id="playBtn">▶</button>
+          <button class="ctrl" id="skpBtn">⏭</button>
+        </div>
+
+        <div class="vol-row">
+          <span class="vi">VOL</span>
+          <input type="range" class="vol" id="vol" min="0" max="100" value="80"/>
+        </div>
+
+        <audio id="ap" ontimeupdate="onTU()" onloadedmetadata="onML()" onended="onEnd()"></audio>
+      </div>
+
+      <!-- Library -->
+      <div>
+        <div class="lib-hd">
+          <div class="lib-title">// OST LIBRARY</div>
+          <div class="lib-cnt" id="libCnt">0 TRACKS</div>
+        </div>
+        <div class="track-list" id="trackList">
+          <div class="empty-lib">
+            <span class="empty-lib-px">NO TRACKS YET</span>
+            Analyze your code to generate your OST
+          </div>
+        </div>
+      </div>
+
+      <!-- Export -->
+      <button class="export-btn" id="exportBtn">
+        [ ⬇ DOWNLOAD FULL OST ]
+      </button>
+
+    </div>
+  </div>
+
+  <!-- CONFIG PANEL -->
+  <div class="cfg-panel" id="cfgPanel">
+    <button class="cfg-close" id="cfgClose">[✕]</button>
+    <div class="cfg-title">// CONFIG</div>
+
+    <div class="cfg-label">GEMINI API KEY (for Gemini + Lyria 3 Pro)</div>
+    <input class="ki" id="geminiKey" type="password" placeholder="AIza..."/>
+
+    <div class="cfg-label">SUPABASE URL (optional — to save tracks)</div>
+    <input class="ki" id="supabaseUrl" type="text" placeholder="https://xxx.supabase.co"/>
+
+    <div class="cfg-label">SUPABASE ANON KEY (optional)</div>
+    <input class="ki" id="supabaseKey" type="text" placeholder="eyJ..."/>
+
+    <button class="sv-btn" id="svBtn">[ SAVE CONFIGURATION ]</button>
+  </div>
+
+</div>
+
+<script>
+// ══ CONFIG ══
+let cfg={geminiKey:'',vertexKey:'',projectId:'',supabaseUrl:'',supabaseKey:''};
+let sb=null,tracks=[],curId=null,playing=false,scenes=[];
+let gameCode='';
+
+document.addEventListener('DOMContentLoaded',()=>{
+  loadCfg();bindUI();
+});
+
+function loadCfg(){
+  const s=localStorage.getItem('devtune_cfg2');
+  if(!s)return;
+  cfg={...cfg,...JSON.parse(s)};
+  const gk=document.getElementById('geminiKey');
+  const su=document.getElementById('supabaseUrl');
+  const sk=document.getElementById('supabaseKey');
+  if(gk)gk.value=cfg.geminiKey||'';
+  if(su)su.value=cfg.supabaseUrl||'';
+  if(sk)sk.value=cfg.supabaseKey||'';
+  if(cfg.supabaseUrl&&cfg.supabaseKey)initSB();
+}
+
+function saveCfg(){
+  cfg.geminiKey  =(document.getElementById('geminiKey')?.value||'').trim();
+  cfg.supabaseUrl=(document.getElementById('supabaseUrl')?.value||'').trim();
+  cfg.supabaseKey=(document.getElementById('supabaseKey')?.value||'').trim();
+  localStorage.setItem('devtune_cfg2',JSON.stringify(cfg));
+  if(cfg.supabaseUrl&&cfg.supabaseKey)initSB();
+  document.getElementById('cfgPanel').classList.remove('show');
+  setStatus('success','CONFIG SAVED!',false);
+}
+
+function initSB(){
+  try{sb=supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey);loadFromDB();}
+  catch(e){console.warn(e)}
+}
+
+// ══ UI ══
+function bindUI(){
+  document.getElementById('cfgBtn').addEventListener('click',()=>document.getElementById('cfgPanel').classList.toggle('show'));
+  document.getElementById('cfgClose').addEventListener('click',()=>document.getElementById('cfgPanel').classList.remove('show'));
+  document.getElementById('svBtn').addEventListener('click',saveCfg);
+
+  const zone=document.getElementById('uploadZone');
+  const input=document.getElementById('fileInput');
+  input.addEventListener('change',e=>handleFiles(e.target.files));
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag')});
+  zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
+  zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');handleFiles(e.dataTransfer.files)});
+  document.getElementById('fileRemove').addEventListener('click',clearFile);
+  document.getElementById('analyzeBtn').addEventListener('click',analyzeCode);
+  document.getElementById('genAllBtn').addEventListener('click',generateAll);
+  document.getElementById('playBtn').addEventListener('click',togglePlay);
+  document.getElementById('rstBtn').addEventListener('click',()=>{document.getElementById('ap').currentTime=0});
+  document.getElementById('skpBtn').addEventListener('click',()=>{document.getElementById('ap').currentTime+=10});
+  document.getElementById('vol').addEventListener('input',e=>document.getElementById('ap').volume=e.target.value/100);
+  document.getElementById('prgTrack').addEventListener('click',seekAudio);
+  document.getElementById('exportBtn').addEventListener('click',exportAll);
+}
+
+// ══ FILES ══
+function handleFiles(files){
+  if(!files||!files.length)return;
+  const names=[...files].map(f=>f.name);
+  Promise.all([...files].map(f=>f.text())).then(contents=>{
+    const combined=contents.map((c,i)=>`// FILE: ${files[i].name}\n${c}`).join('\n\n');
+    gameCode=combined.slice(0,15000);
+    const lines=combined.split('\n').length;
+    const size=([...files].reduce((a,f)=>a+f.size,0)/1024).toFixed(1);
+    document.getElementById('uploadZone').style.display='none';
+    document.getElementById('fileCard').classList.add('show');
+    document.getElementById('fileName').textContent=names.length>1?`${names[0]} +${names.length-1} more`:names[0];
+    document.getElementById('fileMeta').textContent=`${lines.toLocaleString()} LINES · ${size} KB`;
+    document.getElementById('codePreview').classList.add('show');
+    document.getElementById('codePreview').textContent=gameCode.slice(0,600)+'...';
+    document.getElementById('analyzeBtn').disabled=false;
+    setStatus('success','CODE LOADED — READY TO ANALYZE',false);
+  });
+}
+
+function clearFile(){
+  gameCode='';scenes=[];
+  document.getElementById('uploadZone').style.display='';
+  document.getElementById('fileCard').classList.remove('show');
+  document.getElementById('codePreview').classList.remove('show');
+  document.getElementById('analysisCard').classList.remove('show');
+  document.getElementById('genAllBtn').style.display='none';
+  document.getElementById('step3hd').style.display='none';
+  document.getElementById('progWrap').classList.remove('show');
+  document.getElementById('analyzeBtn').disabled=true;
+  document.getElementById('fileInput').value='';
+  document.getElementById('statusBox').classList.remove('show');
+}
+
+// ══ GEMINI ANALYSIS ══
+async function analyzeCode(){
+  if(!cfg.geminiKey){
+    setStatus('error','ADD GEMINI KEY IN [ CONFIG ] FIRST',false);
+    document.getElementById('cfgPanel').classList.add('show');
+    return;
+  }
+  setStatus('info','GEMINI IS READING YOUR CODE...',true);
+  document.getElementById('analyzeBtn').disabled=true;
+
+  // Ask Gemini for each scene one at a time to avoid JSON truncation
+  const detectionPrompt=`You are a game music supervisor analyzing game source code.
+
+List the music scenes needed for this game. Return ONLY a JSON array of scene names and moods. Nothing else. No markdown. Example:
+[{"name":"Main Menu","emoji":"🎮","mood":"heroic welcoming","intensity":6},{"name":"Combat","emoji":"⚔️","mood":"intense battle","intensity":9}]
+
+Find 4-5 scenes. Keep all values very short. No apostrophes or special characters in strings.
+
+Game code:
+${gameCode.slice(0,6000)}`;
+
+  try{
+    const res=await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.geminiKey}`,
+      {method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({
+         contents:[{parts:[{text:detectionPrompt}]}],
+         generationConfig:{temperature:0.1,maxOutputTokens:800}
+       })}
+    );
+    if(!res.ok){
+      const e=await res.json().catch(()=>({}));
+      throw new Error(e?.error?.message||`Gemini error ${res.status}`);
+    }
+    const data=await res.json();
+    let raw=data?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+
+    // Strip markdown
+    raw=raw.replace(/```json|```/g,'').trim();
+
+    // Find array bounds
+    const start=raw.indexOf('[');
+    const end=raw.lastIndexOf(']');
+    if(start===-1||end===-1) throw new Error('NO_JSON');
+    raw=raw.slice(start,end+1);
+
+    let sceneList;
+    try{
+      sceneList=JSON.parse(raw);
+    }catch(e){
+      // Truncate to last complete object
+      const lastBrace=raw.lastIndexOf('}');
+      if(lastBrace>-1){
+        raw=raw.slice(0,lastBrace+1)+']';
+        sceneList=JSON.parse(raw);
+      } else throw new Error('NO_JSON');
+    }
+
+    // Now enrich each scene with a Lyria prompt individually
+    const enriched=await Promise.all(sceneList.slice(0,5).map(async(scene,i)=>{
+      const lyriaPrompt=await getLyriaPrompt(scene);
+      return{
+        id:'s'+(i+1),
+        name:scene.name||'Scene '+(i+1),
+        emoji:scene.emoji||'🎵',
+        mood:scene.mood||'atmospheric',
+        intensity:parseInt(scene.intensity)||5,
+        triggers:scene.name+' game state',
+        lyriaPrompt,
+      };
+    }));
+
+    // Detect genre from code
+    const genre=gameCode.includes('boss')||gameCode.includes('BOSS')?'rpg':
+                 gameCode.includes('race')||gameCode.includes('speed')?'racing':
+                 gameCode.includes('horror')||gameCode.includes('shadow')?'horror':
+                 gameCode.includes('space')||gameCode.includes('asteroid')?'space':'adventure';
+
+    // Detect title
+    const titleMatch=gameCode.match(/title[:\s"']+([A-Z][a-zA-Z\s]+)/);
+    const title=titleMatch?titleMatch[1].trim():'Your Game';
+
+    showAnalysis({genre,title,scenes:enriched});
+
+  }catch(err){
+    if(err.message==='NO_JSON'){
+      // Gemini gave a non-JSON response — use smart fallback based on code
+      setStatus('info','USING SMART SCENE DETECTION...',true);
+      showAnalysis(buildFallbackAnalysis());
+    }else{
+      setStatus('error','ERROR: '+err.message.slice(0,80),false);
+      document.getElementById('analyzeBtn').disabled=false;
+    }
+  }
+}
+
+async function getLyriaPrompt(scene){
+  // Generate a Lyria prompt for a single scene — much smaller request, won't truncate
+  const prompt=`Write a 20-word music generation prompt for a video game scene called "${scene.name}" with mood "${scene.mood}". Include BPM and instruments. No quotes.`;
+  try{
+    const res=await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.geminiKey}`,
+      {method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.4,maxOutputTokens:60}})}
+    );
+    if(!res.ok)return defaultLyriaPrompt(scene);
+    const data=await res.json();
+    const txt=data?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    return txt.trim().slice(0,200)||defaultLyriaPrompt(scene);
+  }catch(e){return defaultLyriaPrompt(scene)}
+}
+
+function defaultLyriaPrompt(scene){
+  const intensity=parseInt(scene.intensity)||5;
+  const bpm=intensity>7?110+intensity*4:50+intensity*6;
+  return `${scene.mood} game music, ${bpm} BPM, cinematic orchestral, no lyrics, loopable, 60 seconds.`;
+}
+
+function buildFallbackAnalysis(){
+  // Smart fallback — reads the actual code to build scenes
+  const code=gameCode.toLowerCase();
+  const scenes=[];
+  if(code.includes('main_menu')||code.includes('mainmenu')||code.includes('title'))
+    scenes.push({id:'s1',name:'Main Theme',emoji:'🎮',mood:'heroic welcoming',intensity:6,triggers:'main menu state',lyriaPrompt:'Heroic welcoming theme, 75 BPM, warm strings and gentle brass, inviting and adventurous, cinematic.'});
+  if(code.includes('exploration')||code.includes('village')||code.includes('forest')||code.includes('world'))
+    scenes.push({id:'s2',name:'Exploration',emoji:'🌲',mood:'mysterious adventure',intensity:4,triggers:'exploration state',lyriaPrompt:'Ambient exploration music, 60 BPM, light woodwinds and strings, mysterious and peaceful, loopable.'});
+  if(code.includes('combat')||code.includes('battle')||code.includes('enemy')||code.includes('attack'))
+    scenes.push({id:'s3',name:'Combat',emoji:'⚔️',mood:'intense battle',intensity:8,triggers:'combat state, enemies active',lyriaPrompt:'Intense battle music, 120 BPM, heavy percussion and aggressive strings, urgent and driving, no lyrics.'});
+  if(code.includes('boss')||code.includes('BOSS')||code.includes('dragon')||code.includes('knight'))
+    scenes.push({id:'s4',name:'Boss Battle',emoji:'👹',mood:'epic confrontation',intensity:10,triggers:'boss spawn, isBossRoom',lyriaPrompt:'Epic boss battle, 100 BPM, massive orchestral with choir and heavy drums, overwhelming and cinematic.'});
+  if(code.includes('victory')||code.includes('win')||code.includes('triumph'))
+    scenes.push({id:'s5',name:'Victory',emoji:'🏆',mood:'triumphant celebration',intensity:8,triggers:'victory state, game won',lyriaPrompt:'Triumphant victory fanfare, 90 BPM, full brass orchestra and choir, euphoric and uplifting, grand.'});
+  if(code.includes('game_over')||code.includes('gameover')||code.includes('death')||code.includes('died'))
+    scenes.push({id:'s6',name:'Game Over',emoji:'💀',mood:'somber defeat',intensity:3,triggers:'game over state, player death',lyriaPrompt:'Somber game over theme, 40 BPM, slow mournful strings, sad and heavy, fading to silence.'});
+  if(code.includes('shop')||code.includes('town')||code.includes('tavern')||code.includes('market'))
+    scenes.push({id:'s7',name:'Town Theme',emoji:'🏘️',mood:'cheerful cozy',intensity:3,triggers:'shop state, town area',lyriaPrompt:'Cheerful town music, 80 BPM, light acoustic guitar and flute, warm and cozy, friendly and safe.'});
+
+  // Generic fallback if nothing matched
+  if(scenes.length===0){
+    scenes.push(
+      {id:'s1',name:'Main Theme',emoji:'🎮',mood:'epic adventure',intensity:7,triggers:'main state',lyriaPrompt:'Epic adventure theme, 80 BPM, orchestral strings and brass, heroic and cinematic, loopable.'},
+      {id:'s2',name:'Action',emoji:'⚔️',mood:'intense action',intensity:9,triggers:'action state',lyriaPrompt:'Fast action music, 120 BPM, heavy percussion and electric elements, urgent and driving, no lyrics.'},
+      {id:'s3',name:'Victory',emoji:'🏆',mood:'triumphant',intensity:8,triggers:'win state',lyriaPrompt:'Victory fanfare, 90 BPM, full brass and percussion, triumphant and uplifting, celebratory.'}
+    );
+  }
+
+  const genre=gameCode.includes('boss')?'rpg':gameCode.includes('race')?'racing':'adventure';
+  const titleMatch=gameCode.match(/title[:\s"']+([A-Z][a-zA-Z\s]+)/);
+  const title=titleMatch?titleMatch[1].trim():'Your Game';
+  return{genre,title,scenes:scenes.slice(0,5)};
+}
+
+function showAnalysis(analysis){
+  scenes=analysis.scenes||[];
+  document.getElementById('analysisTitle').textContent=`${scenes.length} SCENES IN "${(analysis.title||'YOUR GAME').toUpperCase()}"`;
+  document.getElementById('genrePill').textContent=(analysis.genre||'GAME').toUpperCase();
+  document.getElementById('statusBox').classList.remove('show');
+
+  const list=document.getElementById('scenesList');
+  list.innerHTML=scenes.map((s,i)=>`
+    <div class="scene-item queued" id="sc_${s.id}">
+      <div class="si-emoji">${s.emoji}</div>
+      <div class="si-info">
+        <div class="si-name">${s.name.toUpperCase()}</div>
+        <div class="si-desc">${s.mood} · intensity ${s.intensity}/10</div>
+      </div>
+      <div class="intensity-bar">
+        <div class="intensity-fill" style="width:${s.intensity*10}%;background:${intensityColor(s.intensity)}"></div>
+      </div>
+      <span class="si-status queued" id="st_${s.id}">QUEUED</span>
+      <button class="si-play" id="sp_${s.id}" style="display:none">▶ PLAY</button>
+      <button class="si-retry" id="sr_${s.id}" style="display:none;font-family:var(--px);font-size:6px;border:1px solid var(--neon-yellow);background:transparent;color:var(--neon-yellow);padding:4px 7px;cursor:pointer">↺ RETRY</button>
+    </div>
+  `).join('');
+
+  scenes.forEach(s=>{
+    document.getElementById(`sp_${s.id}`)?.addEventListener('click',e=>{
+      e.stopPropagation();
+      const t=tracks.find(t=>t.sceneId===s.id);
+      if(t)playTrack(t);
+    });
+    document.getElementById(`sr_${s.id}`)?.addEventListener('click',async e=>{
+      e.stopPropagation();
+      document.getElementById(`sr_${s.id}`).style.display='none';
+      await generateTrack(s);
+    });
+  });
+
+  document.getElementById('analysisCard').classList.add('show');
+  document.getElementById('analyzeBtn').disabled=false;
+  document.getElementById('genAllBtn').style.display='block';
+  document.getElementById('step3hd').style.display='flex';
+  setStatus('success',`FOUND ${scenes.length} SCENES — READY TO COMPOSE!`,false);
+}
+
+function intensityColor(i){
+  if(i<=3)return'var(--neon-cyan)';
+  if(i<=6)return'var(--neon-yellow)';
+  return'var(--neon-pink)';
+}
+
+// ══ LYRIA GENERATION ══
+async function generateAll(){
+  if(!cfg.geminiKey){
+    setStatus('error','ADD YOUR GEMINI API KEY IN CONFIG FIRST',false);
+    document.getElementById('cfgPanel').classList.add('show');
+    return;
+  }
+  document.getElementById('genAllBtn').disabled=true;
+  document.getElementById('progWrap').classList.add('show');
+  let done=0;
+  for(const scene of scenes){
+    // Skip scenes that already have a track
+    if(tracks.find(t=>t.sceneId===scene.id)){done++;continue;}
+    await generateTrack(scene);
+    done++;
+    const pct=Math.round((done/scenes.length)*100);
+    document.getElementById('progFill').style.width=pct+'%';
+    document.getElementById('progLabel').textContent=`GENERATING... ${done} / ${scenes.length}`;
+    document.getElementById('progText').textContent=pct+'%';
+  }
+  document.getElementById('genAllBtn').disabled=false;
+  document.getElementById('progLabel').textContent='COMPLETE!';
+  setStatus('success',`OST COMPLETE — ${scenes.length} TRACKS READY!`,false);
+}
+
+async function generateTrack(scene){
+  const card=document.getElementById(`sc_${scene.id}`);
+  const st=document.getElementById(`st_${scene.id}`);
+  if(card){card.className='scene-item generating';st.className='si-status generating';st.textContent='GENERATING...'}
+
+  const prompt=`${scene.lyriaPrompt} This is for a video game scene: "${scene.name}". High quality game soundtrack, loopable.`;
+
+  try{
+    // Lyria 3 Pro via Gemini API — uses your AIza key, no Vertex needed!
+    const res=await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/lyria-3-pro-preview:generateContent?key=${cfg.geminiKey}`,
+      {method:'POST',
+       headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({
+         contents:[{parts:[{text:prompt}]}],
+         generationConfig:{responseModalities:['AUDIO','TEXT']}
+       })}
+    );
+    if(!res.ok){
+      const e=await res.json().catch(()=>({}));
+      throw new Error(e?.error?.message||`Lyria 3 Pro error ${res.status}`);
+    }
+    const data=await res.json();
+
+    // Lyria 3 Pro returns audio in candidates[0].content.parts
+    let audioB64=null;
+    let mimeType='audio/mp3';
+    const parts=data?.candidates?.[0]?.content?.parts||[];
+    for(const part of parts){
+      if(part.inlineData&&part.inlineData.mimeType?.includes('audio')){
+        audioB64=part.inlineData.data;
+        mimeType=part.inlineData.mimeType;
+        break;
+      }
+    }
+    if(!audioB64)throw new Error('No audio returned from Lyria 3 Pro. Check your API key has Lyria access.');
+
+    const url=URL.createObjectURL(b64Blob(audioB64,mimeType));
+    const track={id:`t_${Date.now()}_${scene.id}`,sceneId:scene.id,name:scene.name,
+      emoji:scene.emoji,mood:scene.mood,intensity:scene.intensity,
+      prompt,audioUrl:url,audioB64,createdAt:new Date().toISOString()};
+
+    await saveToDB(track);
+    tracks.push(track);
+    renderLib();
+
+    if(card){card.className='scene-item done';st.className='si-status done';st.textContent='DONE'}
+    const playBtn=document.getElementById(`sp_${scene.id}`);
+    if(playBtn)playBtn.style.display='block';
+    if(tracks.length===1)playTrack(track);
+
+  }catch(err){
+    if(card){card.className='scene-item';st.textContent='✗ FAIL'}
+    const retryBtn=document.getElementById(`sr_${scene.id}`);
+    if(retryBtn)retryBtn.style.display='block';
+    console.error(err);
+  }
+}
+
+// ══ DB ══
+async function saveToDB(t){
+  if(!sb)return;
+  try{await sb.from('devtune_tracks').insert({id:t.id,scene_id:t.sceneId,name:t.name,emoji:t.emoji,mood:t.mood,intensity:t.intensity,prompt:t.prompt,audio_b64:t.audioB64,created_at:t.createdAt})}
+  catch(e){console.warn(e)}
+}
+async function loadFromDB(){
+  if(!sb)return;
+  try{
+    const{data}=await sb.from('devtune_tracks').select('*').order('created_at',{ascending:false}).limit(20);
+    if(data?.length){
+      tracks=data.map(r=>({id:r.id,sceneId:r.scene_id,name:r.name,emoji:r.emoji,mood:r.mood,intensity:r.intensity,audioUrl:r.audio_b64?URL.createObjectURL(b64Blob(r.audio_b64,'audio/wav')):null,createdAt:r.created_at})).filter(t=>t.audioUrl);
+      renderLib();
+    }
+  }catch(e){console.warn(e)}
+}
+
+// ══ PLAYER ══
+function playTrack(t){
+  curId=t.id;
+  document.getElementById('albumEmoji').textContent=t.emoji;
+  document.getElementById('albumArt').style.borderColor=intensityColor(t.intensity);
+  document.getElementById('albumArt').style.boxShadow=`0 0 20px ${intensityColor(t.intensity)}44,4px 4px 0 ${intensityColor(t.intensity)}22`;
+  document.getElementById('trackName').textContent=t.name.toUpperCase();
+  document.getElementById('trackMeta').textContent=`${t.mood} · ${t.intensity}/10 intensity · LYRIA`;
+  const ap=document.getElementById('ap');
+  ap.src=t.audioUrl;ap.volume=document.getElementById('vol').value/100;
+  ap.load();ap.play().then(()=>{
+    playing=true;document.getElementById('playBtn').textContent='⏸';
+    document.getElementById('albumWave').classList.add('play');
+  }).catch(()=>{});
+  document.querySelectorAll('.ti').forEach(el=>el.classList.toggle('active',el.dataset.id===t.id));
+}
+
+function togglePlay(){
+  const ap=document.getElementById('ap');if(!ap.src)return;
+  if(ap.paused){ap.play();playing=true;document.getElementById('playBtn').textContent='⏸';document.getElementById('albumWave').classList.add('play')}
+  else{ap.pause();playing=false;document.getElementById('playBtn').textContent='▶';document.getElementById('albumWave').classList.remove('play')}
+}
+function onTU(){const ap=document.getElementById('ap');if(!ap.duration)return;document.getElementById('prgFill2').style.width=(ap.currentTime/ap.duration*100)+'%';document.getElementById('tCur').textContent=fmt(ap.currentTime)}
+function onML(){document.getElementById('tTot').textContent=fmt(document.getElementById('ap').duration)}
+function onEnd(){
+  playing=false;document.getElementById('playBtn').textContent='▶';document.getElementById('albumWave').classList.remove('play');
+  const idx=tracks.findIndex(t=>t.id===curId);
+  if(idx>=0&&idx<tracks.length-1)playTrack(tracks[idx+1]);
+}
+function seekAudio(e){const ap=document.getElementById('ap');if(!ap.duration)return;const r=document.getElementById('prgTrack').getBoundingClientRect();ap.currentTime=((e.clientX-r.left)/r.width)*ap.duration}
+
+// ══ LIBRARY ══
+function renderLib(){
+  const list=document.getElementById('trackList');
+  document.getElementById('libCnt').textContent=`${tracks.length} TRACK${tracks.length!==1?'S':''}`;
+  if(!tracks.length){
+    list.innerHTML='<div class="empty-lib"><span class="empty-lib-px">NO TRACKS YET</span>Analyze your code to generate your OST</div>';
+    return;
+  }
+  list.innerHTML=tracks.map(t=>`
+    <div class="ti${t.id===curId?' active':''}" data-id="${t.id}">
+      <div class="ti-emoji">${t.emoji}</div>
+      <div class="ti-info">
+        <div class="ti-name">${t.name.toUpperCase()}</div>
+        <div class="ti-meta">${t.mood} · ${t.intensity}/10</div>
+      </div>
+      <button class="ti-dl" data-id="${t.id}">[ ⬇ ]</button>
+    </div>
+  `).join('');
+  list.querySelectorAll('.ti').forEach(el=>{
+    el.addEventListener('click',()=>{const t=tracks.find(t=>t.id===el.dataset.id);if(t)playTrack(t)});
+  });
+  list.querySelectorAll('.ti-dl').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const t=tracks.find(t=>t.id===btn.dataset.id);
+      if(t){const a=document.createElement('a');a.href=t.audioUrl;a.download=`devtune-${t.name.replace(/\s+/g,'-').toLowerCase()}.wav`;a.click()}
+    });
+  });
+}
+
+// ══ EXPORT ══
+async function exportAll(){
+  if(!tracks.length){setStatus('error','NO TRACKS TO EXPORT',false);return}
+  setStatus('info','DOWNLOADING ALL TRACKS...',true);
+  for(const t of tracks){
+    await new Promise(r=>setTimeout(r,300));
+    const a=document.createElement('a');a.href=t.audioUrl;
+    a.download=`devtune-${t.name.replace(/\s+/g,'-').toLowerCase()}.wav`;a.click();
+  }
+  setStatus('success',`${tracks.length} TRACKS DOWNLOADED!`,false);
+}
+
+// ══ STATUS ══
+function setStatus(type,msg,spin){
+  const b=document.getElementById('statusBox');
+  b.className='status-box show '+type;
+  document.getElementById('statusText').textContent=msg;
+  document.getElementById('statusSpin').style.display=spin?'block':'none';
+}
+
+// ══ UTILS ══
+function b64Blob(b64,mime){const bytes=atob(b64);const arr=new Uint8Array(bytes.length);for(let i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i);return new Blob([arr],{type:mime})}
+function fmt(s){if(!s||isNaN(s))return'0:00';return`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`}
+</script>
+</body>
+</html>
