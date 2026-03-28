@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Shadow Quest</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:#050508;color:#fff;overflow:hidden;user-select:none}
+    body{display:flex;flex-direction:column}
+
+    /* ── HUD ── */
+    .hud{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 20px;height:50px;flex-shrink:0;
+      background:rgba(0,0,0,0.9);
+      border-bottom:1px solid rgba(99,179,255,0.1);
+      position:relative;z-index:10;
+    }
+    .hud-left{display:flex;align-items:center;gap:6px}
+    .game-title{font-family:'Press Start 2P',monospace;font-size:10px;color:#63b3ff;letter-spacing:2px;
+      text-shadow:0 0 8px rgba(99,179,255,0.4)}
+    .hud-center{display:flex;align-items:center;gap:16px}
+    .hp-row{display:flex;align-items:center;gap:7px}
+    .hp-label{font-family:'Press Start 2P',monospace;font-size:6px;color:rgba(255,255,255,0.3);letter-spacing:1px}
+    .hp-track{width:110px;height:7px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden}
+    .hp-bar{height:100%;border-radius:3px;transition:width .3s,background .4s}
+    .hp-num{font-family:'Press Start 2P',monospace;font-size:7px;font-weight:700;min-width:26px}
+    .hud-stat{font-family:'Press Start 2P',monospace;font-size:7px;color:rgba(255,255,255,0.3)}
+    .hud-stat b{color:#fff}
+    .hud-right{display:flex;align-items:center;gap:8px}
+    .phase-tag{font-family:'Press Start 2P',monospace;font-size:6px;padding:4px 10px;
+      border-radius:3px;border:1px solid;transition:all .5s;letter-spacing:1px}
+    .music-tag{font-family:'Press Start 2P',monospace;font-size:6px;
+      display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:3px;border:1px solid;transition:all .4s}
+    .music-tag.off{border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.2)}
+    .music-tag.on{border-color:rgba(57,255,143,0.4);color:#39ff8f}
+    .mdot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+    .mdot.beat{animation:beat 1s steps(2) infinite}
+    @keyframes beat{0%,100%{opacity:1}50%{opacity:0.2}}
+
+    /* ── LAYOUT ── */
+    .layout{display:flex;flex:1;overflow:hidden}
+
+    /* ── SIDE PANEL ── */
+    .side{
+      width:200px;flex-shrink:0;
+      background:rgba(0,0,0,0.6);
+      border-right:1px solid rgba(255,255,255,0.05);
+      display:flex;flex-direction:column;
+      padding:16px 12px;gap:12px;
+      overflow-y:auto;
+    }
+    .side-label{font-family:'Press Start 2P',monospace;font-size:6px;
+      color:rgba(255,255,255,0.2);letter-spacing:2px;margin-bottom:4px}
+
+    /* Chapter list */
+    .chapter-list{display:flex;flex-direction:column;gap:6px}
+    .chapter-item{
+      padding:8px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);
+      background:rgba(255,255,255,0.02);transition:all .4s;
+    }
+    .chapter-item.active{border-color:currentColor;background:rgba(255,255,255,0.05)}
+    .chapter-item.done{opacity:0.35}
+    .ch-num{font-family:'Press Start 2P',monospace;font-size:6px;color:rgba(255,255,255,0.25);margin-bottom:4px}
+    .ch-name{font-family:'Press Start 2P',monospace;font-size:7px;line-height:1.6}
+    .ch-bar{height:2px;border-radius:2px;margin-top:6px;background:rgba(255,255,255,0.07);overflow:hidden}
+    .ch-bar-fill{height:100%;border-radius:2px;width:0%;transition:width linear}
+
+    /* Music slots */
+    .music-slots{display:flex;flex-direction:column;gap:5px}
+    .mslot{
+      display:flex;align-items:center;gap:8px;
+      padding:6px 8px;border-radius:5px;border:1px solid rgba(255,255,255,0.06);
+      background:rgba(255,255,255,0.02);cursor:pointer;transition:all .15s;position:relative;
+    }
+    .mslot:hover{border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.04)}
+    .mslot.loaded{border-color:rgba(57,255,143,0.25);background:rgba(57,255,143,0.03)}
+    .mslot-em{font-size:13px;flex-shrink:0}
+    .mslot-info{flex:1;min-width:0}
+    .mslot-name{font-family:'Press Start 2P',monospace;font-size:6px;color:rgba(255,255,255,0.5);line-height:1.5}
+    .mslot-st{font-family:'Press Start 2P',monospace;font-size:5px;color:rgba(255,255,255,0.18);margin-top:2px}
+    .mslot-st.ok{color:rgba(57,255,143,0.7)}
+    .mslot input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .mslot-note{font-family:'Press Start 2P',monospace;font-size:5px;
+      color:rgba(255,255,255,0.12);text-align:center;line-height:1.8;margin-top:4px}
+
+    /* ── GAME CANVAS ── */
+    .game-wrap{flex:1;position:relative;overflow:hidden}
+    canvas{display:block;width:100%;height:100%}
+
+    /* Chapter flash overlay (non-blocking) */
+    .ch-flash{
+      position:absolute;top:20px;left:50%;transform:translateX(-50%);
+      font-family:'Press Start 2P',monospace;font-size:9px;letter-spacing:3px;
+      padding:6px 18px;border-radius:3px;border:1px solid transparent;
+      opacity:0;transition:opacity .5s;pointer-events:none;z-index:5;white-space:nowrap;
+    }
+    .ch-flash.show{opacity:1}
+
+    /* START / END overlay */
+    .overlay{display:none;position:absolute;inset:0;background:rgba(5,5,8,0.95);
+      backdrop-filter:blur(8px);flex-direction:column;align-items:center;justify-content:center;
+      gap:16px;z-index:20;text-align:center;padding:24px}
+    .overlay.show{display:flex}
+    .ov-title{font-family:'Press Start 2P',monospace;font-size:18px;color:#63b3ff;
+      text-shadow:0 0 12px rgba(99,179,255,0.5);letter-spacing:3px;line-height:1.6}
+    .ov-sub{font-family:'Press Start 2P',monospace;font-size:7px;color:rgba(255,255,255,0.35);
+      line-height:2.2;max-width:380px}
+    .ov-btn{font-family:'Press Start 2P',monospace;font-size:8px;padding:12px 28px;
+      border:2px solid #63b3ff;background:transparent;color:#63b3ff;
+      cursor:pointer;letter-spacing:2px;transition:all .2s;margin-top:4px}
+    .ov-btn:hover{background:rgba(99,179,255,0.1);box-shadow:0 0 16px rgba(99,179,255,0.2)}
+  </style>
+</head>
+<body>
+
+<!-- HUD -->
+<div class="hud">
+  <div class="hud-left">
+    <div class="game-title">⚔ SHADOW QUEST</div>
+  </div>
+  <div class="hud-center">
+    <div class="hp-row">
+      <span class="hp-label">HP</span>
+      <div class="hp-track"><div class="hp-bar" id="hpBar" style="width:100%;background:#39ff8f"></div></div>
+      <span class="hp-num" id="hpNum" style="color:#39ff8f">100</span>
+    </div>
+    <div class="hud-stat">SCORE <b id="scoreEl">0</b></div>
+    <div class="hud-stat">ENEMIES <b id="eEl">0</b></div>
+  </div>
+  <div class="hud-right">
+    <div class="phase-tag" id="phaseTag" style="color:#63b3ff;border-color:rgba(99,179,255,0.3)">EXPLORING</div>
+    <div class="music-tag off" id="musicTag"><div class="mdot" id="mdot"></div><span id="mtagTxt">SILENT</span></div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDE PANEL -->
+  <div class="side">
+    <div>
+      <div class="side-label">CHAPTERS</div>
+      <div class="chapter-list" id="chapterList"></div>
+    </div>
+
+    <div>
+      <div class="side-label">SOUNDTRACK</div>
+      <div class="music-slots">
+
+        <div class="mslot" id="ms-exploration">
+          <div class="mslot-em">🌲</div>
+          <div class="mslot-info">
+            <div class="mslot-name">EXPLORATION</div>
+            <div class="mslot-st" id="st-exploration">no track</div>
+          </div>
+          <input type="file" accept="audio/*" onchange="loadTrack('exploration',this)"/>
+        </div>
+
+        <div class="mslot" id="ms-combat">
+          <div class="mslot-em">⚔️</div>
+          <div class="mslot-info">
+            <div class="mslot-name">COMBAT</div>
+            <div class="mslot-st" id="st-combat">no track</div>
+          </div>
+          <input type="file" accept="audio/*" onchange="loadTrack('combat',this)"/>
+        </div>
+
+        <div class="mslot" id="ms-boss">
+          <div class="mslot-em">👹</div>
+          <div class="mslot-info">
+            <div class="mslot-name">BOSS</div>
+            <div class="mslot-st" id="st-boss">no track</div>
+          </div>
+          <input type="file" accept="audio/*" onchange="loadTrack('boss',this)"/>
+        </div>
+
+        <div class="mslot" id="ms-victory">
+          <div class="mslot-em">🏆</div>
+          <div class="mslot-info">
+            <div class="mslot-name">VICTORY</div>
+            <div class="mslot-st" id="st-victory">no track</div>
+          </div>
+          <input type="file" accept="audio/*" onchange="loadTrack('victory',this)"/>
+        </div>
+
+        <div class="mslot-note">click a slot to<br>load a track</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div class="game-wrap">
+    <canvas id="gc"></canvas>
+    <div class="ch-flash" id="chFlash"></div>
+
+    <!-- START OVERLAY -->
+    <div class="overlay show" id="overlay">
+      <div class="ov-title">SHADOW<br>QUEST</div>
+      <div class="ov-sub">
+        A hero's journey through four chapters.<br>
+        Each chapter has its own soundtrack.<br>
+        Load tracks on the left to hear the full experience.
+      </div>
+      <button class="ov-btn" id="ovBtn">▶ START GAME</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- AUDIO -->
+<audio id="aud-exploration" loop></audio>
+<audio id="aud-combat"      loop></audio>
+<audio id="aud-boss"        loop></audio>
+<audio id="aud-victory"         ></audio>
+
+<script>
+// ══ AUDIO ══
+const AUD={
+  exploration:{el:document.getElementById('aud-exploration'),name:'EXPLORATION',loaded:false},
+  combat:     {el:document.getElementById('aud-combat'),     name:'COMBAT',    loaded:false},
+  boss:       {el:document.getElementById('aud-boss'),       name:'BOSS BATTLE',loaded:false},
+  victory:    {el:document.getElementById('aud-victory'),    name:'VICTORY',   loaded:false},
+};
+let curTrack=null;
+
+function loadTrack(key,input){
+  const file=input.files[0];if(!file)return;
+  AUD[key].el.src=URL.createObjectURL(file);
+  AUD[key].loaded=true;
+  const st=document.getElementById(`st-${key}`);
+  st.textContent='loaded';st.className='mslot-st ok';
+  document.getElementById(`ms-${key}`).classList.add('loaded');
+}
+
+function playMusic(key){
+  Object.values(AUD).forEach(a=>{a.el.pause();a.el.currentTime=0});
+  curTrack=key;
+  if(!AUD[key]?.loaded){setMusicTag(null,false);return}
+  AUD[key].el.volume=0.75;
+  AUD[key].el.play().catch(()=>{});
+  setMusicTag(AUD[key].name,true);
+}
+
+function stopMusic(){
+  Object.values(AUD).forEach(a=>{a.el.pause();a.el.currentTime=0});
+  curTrack=null;setMusicTag(null,false);
+}
+
+function setMusicTag(name,on){
+  const tag=document.getElementById('musicTag');
+  const dot=document.getElementById('mdot');
+  const txt=document.getElementById('mtagTxt');
+  if(on&&name){tag.className='music-tag on';dot.className='mdot beat';txt.textContent=name}
+  else{tag.className='music-tag off';dot.className='mdot';txt.textContent='SILENT'}
+}
+
+// ══ CHAPTERS ══
+const SCENE_MS=10000;
+const CHAPTERS=[
+  {id:'exploration',title:'ENCHANTED FOREST',sub:'The hero ventures forth...',
+   color:'#63b3ff',music:'exploration',phase:'EXPLORING',
+   phColor:'#63b3ff',phBorder:'rgba(99,179,255,0.3)',biome:'forest',enemies:0,boss:false},
+  {id:'combat',title:'GOBLIN AMBUSH',sub:'Enemies from the shadows!',
+   color:'#ff6b35',music:'combat',phase:'COMBAT',
+   phColor:'#ff6b35',phBorder:'rgba(255,107,53,0.4)',biome:'forest',enemies:3,boss:false},
+  {id:'boss',title:'THE DARK KNIGHT',sub:'The guardian awakens...',
+   color:'#ff4757',music:'boss',phase:'BOSS FIGHT',
+   phColor:'#ff4757',phBorder:'rgba(255,71,87,0.5)',biome:'dungeon',enemies:0,boss:true},
+  {id:'victory',title:'VICTORY',sub:'Shadow Quest is saved!',
+   color:'#39ff8f',music:'victory',phase:'VICTORY',
+   phColor:'#39ff8f',phBorder:'rgba(57,255,143,0.4)',biome:'victory',enemies:0,boss:false},
+];
+
+let sceneIdx=-1,sceneTimer=null;
+
+// Build chapter list in sidebar
+function buildChapterList(){
+  const list=document.getElementById('chapterList');
+  list.innerHTML=CHAPTERS.map((ch,i)=>`
+    <div class="chapter-item" id="chi-${ch.id}" style="color:${ch.color}">
+      <div class="ch-num">CHAPTER ${i+1}</div>
+      <div class="ch-name" style="color:${ch.color}">${ch.title}</div>
+      <div class="ch-bar"><div class="ch-bar-fill" id="chbar-${ch.id}" style="background:${ch.color}"></div></div>
+    </div>
+  `).join('');
+}
+
+function runScene(idx){
+  if(idx>=CHAPTERS.length){endGame();return}
+  sceneIdx=idx;
+  const ch=CHAPTERS[idx];
+
+  // Reset
+  enemies=[];bossActive=false;
+  player.hp=100;player.inv=0;
+  if(ch.boss)setTimeout(()=>spawnBoss(),1200);
+  else for(let i=0;i<ch.enemies;i++)setTimeout(()=>spawnEnemy(),i*700+600);
+  currentBiome=ch.biome;
+
+  // Update all chapter items
+  CHAPTERS.forEach((c,i)=>{
+    const el=document.getElementById(`chi-${c.id}`);
+    el.className='chapter-item'+(i<idx?' done':i===idx?' active':'');
+    document.getElementById(`chbar-${c.id}`).style.transition='none';
+    document.getElementById(`chbar-${c.id}`).style.width=i<idx?'100%':'0%';
+  });
+
+  // Animate active bar
+  if(idx<CHAPTERS.length){
+    requestAnimationFrame(()=>{
+      const fill=document.getElementById(`chbar-${ch.id}`);
+      fill.style.transition=`width ${SCENE_MS}ms linear`;
+      fill.style.width='100%';
+    });
+  }
+
+  // Phase pill
+  const pill=document.getElementById('phaseTag');
+  pill.textContent=ch.phase;pill.style.color=ch.phColor;pill.style.borderColor=ch.phBorder;
+
+  // Chapter flash
+  const flash=document.getElementById('chFlash');
+  flash.textContent=ch.title;flash.style.color=ch.color;
+  flash.style.borderColor=ch.color+'55';flash.style.background=ch.color+'12';
+  flash.classList.add('show');
+  setTimeout(()=>flash.classList.remove('show'),2500);
+
+  // Music
+  playMusic(ch.music);
+
+  clearTimeout(sceneTimer);
+  sceneTimer=setTimeout(()=>runScene(idx+1),SCENE_MS);
+}
+
+function endGame(){
+  stopMusic();
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('ov-title')?.remove();
+  document.querySelector('.ov-title').textContent='THE END';
+  document.querySelector('.ov-sub').textContent='Shadow Quest complete. Press restart to play again.';
+  document.getElementById('ovBtn').textContent='↺ PLAY AGAIN';
+  // Mark all done
+  CHAPTERS.forEach(c=>{
+    document.getElementById(`chi-${c.id}`).className='chapter-item done';
+    document.getElementById(`chbar-${c.id}`).style.width='100%';
+  });
+}
+
+// ══ CANVAS ══
+const canvas=document.getElementById('gc');
+const ctx=canvas.getContext('2d');
+function resize(){
+  const wrap=canvas.parentElement;
+  canvas.width=wrap.offsetWidth*devicePixelRatio;
+  canvas.height=wrap.offsetHeight*devicePixelRatio;
+  ctx.scale(devicePixelRatio,devicePixelRatio);
+}
+resize();window.addEventListener('resize',resize);
+const W=()=>canvas.offsetWidth,H=()=>canvas.offsetHeight,GY=()=>H()-90;
+
+let running=false,frame=0,score=0,scrollX=0,bossActive=false,currentBiome='forest',autoT=0;
+const player={x:100,y:0,w:30,h:42,vx:0,vy:0,onGround:false,hp:100,maxHp:100,inv:0,dir:1};
+let enemies=[],particles=[],platforms=[];
+const K={};
+window.addEventListener('keydown',e=>{K[e.code]=true;['Space','ArrowUp','ArrowLeft','ArrowRight','ArrowDown'].includes(e.code)&&e.preventDefault()});
+window.addEventListener('keyup',e=>K[e.code]=false);
+
+function initGame(){
+  player.x=100;player.y=GY()-player.h;player.vx=0;player.vy=0;
+  player.hp=100;player.inv=0;player.dir=1;
+  score=0;frame=0;scrollX=0;bossActive=false;currentBiome='forest';autoT=0;
+  enemies=[];particles=[];
+  platforms=[
+    {x:280,y:GY()-85,w:110,h:14},{x:500,y:GY()-145,w:100,h:14},
+    {x:720,y:GY()-95,w:120,h:14},{x:970,y:GY()-155,w:105,h:14},
+  ];
+  updateHUD();
+}
+
+function spawnEnemy(){
+  enemies.push({x:W()+50,y:GY()-44,w:32,h:44,vx:0,hp:40,maxHp:40,isBoss:false,flash:0});
+}
+function spawnBoss(){
+  bossActive=true;
+  enemies.push({x:W()+80,y:GY()-90,w:64,h:90,vx:0,hp:300,maxHp:300,isBoss:true,flash:0});
+}
+
+function autoWalk(){
+  autoT++;
+  if(!K['ArrowLeft']&&!K['KeyA']&&!K['ArrowRight']&&!K['KeyD']){player.vx=1.6;player.dir=1}
+  if(autoT%200===0&&player.onGround){player.vy=-11;player.onGround=false}
+}
+
+function updatePlayer(){
+  if(K['ArrowLeft']||K['KeyA']){player.vx=-4.5;player.dir=-1}
+  else if(K['ArrowRight']||K['KeyD']){player.vx=4.5;player.dir=1}
+  if((K['Space']||K['ArrowUp']||K['KeyW'])&&player.onGround){player.vy=-13;player.onGround=false}
+  player.vy+=0.55;player.x+=player.vx;player.y+=player.vy;player.vx*=0.78;
+  const g=GY();player.onGround=false;
+  if(player.y+player.h>=g){player.y=g-player.h;player.vy=0;player.onGround=true}
+  for(const p of platforms){
+    const px=p.x-scrollX;
+    if(player.x+player.w>px+4&&player.x<px+p.w-4&&player.y+player.h>=p.y&&player.y+player.h<=p.y+18&&player.vy>=0){
+      player.y=p.y-player.h;player.vy=0;player.onGround=true;
+    }
+  }
+  if(player.x<0)player.x=0;
+  if(player.x+player.w>W())player.x=W()-player.w;
+  if(player.x>W()*.58)scrollX+=(player.x-W()*.58)*.055;
+  if(player.inv>0)player.inv--;
+}
+
+function updateEnemies(){
+  for(let i=enemies.length-1;i>=0;i--){
+    const e=enemies[i];
+    const dx=player.x-(e.x+e.w/2);
+    const spd=e.isBoss?.9:1.7;
+    e.vx+=(dx>0?1:-1)*.08;e.vx=Math.max(-spd,Math.min(spd,e.vx));e.x+=e.vx;
+    if(e.flash>0)e.flash--;
+    if(player.inv===0&&player.x<e.x+e.w&&player.x+player.w>e.x&&player.y<e.y+e.h&&player.y+player.h>e.y){
+      player.hp=Math.max(15,player.hp-(e.isBoss?7:5));
+      player.inv=50;player.vx=dx<0?5:-5;
+      burst(player.x+player.w/2,player.y+player.h/2,'#ff4757',7);
+    }
+    if(player.vy>0&&player.x+player.w>e.x+4&&player.x<e.x+e.w-4&&player.y+player.h>=e.y&&player.y+player.h<=e.y+22){
+      e.hp-=40;e.flash=8;player.vy=-9;score+=e.isBoss?500:100;
+      burst(e.x+e.w/2,e.y,'#63b3ff',10);
+      if(e.hp<=0){enemies.splice(i,1);if(e.isBoss)bossActive=false}
+    }
+  }
+}
+
+function burst(x,y,col,n){for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*6,vy:(Math.random()-1.5)*5,life:32,col,r:Math.random()*2.5+1})}
+function updateParticles(){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.2;p.life--;if(p.life<=0)particles.splice(i,1)}}
+
+function draw(){
+  const cw=W(),ch=H(),gy=GY();
+  const D=currentBiome==='dungeon',V=currentBiome==='victory';
+  const skyA=D?'#0a0303':V?'#060f06':'#07101a',skyB=D?'#040101':V?'#030803':'#030609';
+  const sg=ctx.createLinearGradient(0,0,0,ch);sg.addColorStop(0,skyA);sg.addColorStop(1,skyB);
+  ctx.fillStyle=sg;ctx.fillRect(0,0,cw,ch);
+  // Stars
+  for(let i=0;i<80;i++){
+    const sx=((i*137.5+frame*.007)%cw),sy=(i*91.3)%(ch*.65);
+    const a=D?.05:V?.1:.2+Math.sin(i*.5+frame*.015)*.1;
+    ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.fillRect(sx,sy,i%7===0?2:1,i%7===0?2:1);
+  }
+  if(V){for(let i=0;i<22;i++){const t=frame*.018+i*.4;const sx=(Math.sin(t*.7+i)*cw*.35+cw*.5)%cw,sy=Math.cos(t*.5+i*.3)*ch*.3+ch*.4;ctx.fillStyle=`rgba(57,255,143,${(Math.sin(t)*.4+.5)*.45})`;ctx.beginPath();ctx.arc(sx,sy,i%4===0?5:2.5,0,Math.PI*2);ctx.fill()}}
+  else if(D){for(let i=0;i<7;i++){const sx=((i*210-scrollX*.14)%(cw+170)+cw+170)%(cw+170)-85;ctx.fillStyle='#160404';ctx.beginPath();ctx.moveTo(sx,0);ctx.lineTo(sx+14,48+i*7);ctx.lineTo(sx+28,0);ctx.fill()}}
+  else{for(let i=0;i<9;i++){const tx=((i*190-scrollX*.2)%(cw+150)+cw+150)%(cw+150)-75,th=48+i%3*22;ctx.fillStyle='#07121f';ctx.beginPath();ctx.moveTo(tx,gy);ctx.lineTo(tx+18,gy-th);ctx.lineTo(tx+36,gy);ctx.fill();ctx.beginPath();ctx.moveTo(tx+5,gy-th*.55);ctx.lineTo(tx+18,gy-th-20);ctx.lineTo(tx+31,gy-th*.55);ctx.fill()}}
+  const gLine=D?'#ff4757':V?'#39ff8f':'#63b3ff';
+  ctx.fillStyle=D?'#160606':V?'#071406':'#071320';ctx.fillRect(0,gy,cw,ch-gy);
+  ctx.fillStyle=gLine+'44';ctx.fillRect(0,gy,cw,3);
+  ctx.strokeStyle=gLine+'0d';ctx.lineWidth=1;
+  for(let x=(-scrollX*.5)%60;x<cw;x+=60){ctx.beginPath();ctx.moveTo(x,gy);ctx.lineTo(x,ch);ctx.stroke()}
+  for(const p of platforms){const px=p.x-scrollX;if(px+p.w<-20||px>cw+20)continue;ctx.fillStyle=D?'#280d0d':V?'#0d2810':'#0c1e30';ctx.beginPath();ctx.roundRect(px,p.y,p.w,p.h,4);ctx.fill();ctx.fillStyle=gLine+'55';ctx.fillRect(px,p.y,p.w,3)}
+  for(const p of particles){ctx.globalAlpha=p.life/32;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+  for(const e of enemies)drawEnemy(e,gLine);
+  drawPlayer(gLine);
+  if(D){ctx.fillStyle='rgba(255,71,87,0.03)';ctx.fillRect(0,0,cw,ch)}
+  if(V){ctx.fillStyle='rgba(57,255,143,0.04)';ctx.fillRect(0,0,cw,ch)}
+}
+
+function drawPlayer(acc){
+  const p=player;
+  if(p.inv>0&&Math.floor(p.inv/4)%2===0)return;
+  ctx.fillStyle='rgba(0,0,0,0.18)';ctx.beginPath();ctx.ellipse(p.x+p.w/2,GY(),p.w/2,4,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=acc;ctx.beginPath();ctx.roundRect(p.x+2,p.y+16,p.w-4,p.h-16,4);ctx.fill();
+  ctx.fillStyle='#e8d5b5';ctx.beginPath();ctx.arc(p.x+p.w/2,p.y+11,12,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#0a0a10';ctx.beginPath();ctx.arc(p.x+p.w/2+(p.dir>0?5:-5),p.y+11,2.5,0,Math.PI*2);ctx.fill();
+  const la=Math.sin(frame*.22)*(Math.abs(p.vx)>.8?7:0);
+  ctx.fillStyle='#1a1a2e';ctx.fillRect(p.x+4,p.y+p.h-12,10,12+la);ctx.fillRect(p.x+p.w-14,p.y+p.h-12,10,12-la);
+}
+
+function drawEnemy(e,acc){
+  ctx.fillStyle='rgba(0,0,0,0.15)';ctx.beginPath();ctx.ellipse(e.x+e.w/2,GY(),e.w*.5,4,0,0,Math.PI*2);ctx.fill();
+  const fl=e.flash>0&&Math.floor(e.flash/2)%2===0;
+  if(e.isBoss){
+    ctx.fillStyle=fl?'#fff':'#cc2233';ctx.beginPath();ctx.roundRect(e.x+4,e.y+28,e.w-8,e.h-28,6);ctx.fill();ctx.beginPath();ctx.arc(e.x+e.w/2,e.y+26,26,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#7a0010';ctx.beginPath();ctx.moveTo(e.x+8,e.y+10);ctx.lineTo(e.x,e.y-14);ctx.lineTo(e.x+18,e.y+4);ctx.fill();ctx.beginPath();ctx.moveTo(e.x+e.w-8,e.y+10);ctx.lineTo(e.x+e.w,e.y-14);ctx.lineTo(e.x+e.w-18,e.y+4);ctx.fill();
+    ctx.fillStyle='#ffff00';ctx.beginPath();ctx.arc(e.x+e.w/2-8,e.y+24,5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(e.x+e.w/2+8,e.y+24,5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#f00';ctx.beginPath();ctx.arc(e.x+e.w/2-8,e.y+24,2.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(e.x+e.w/2+8,e.y+24,2.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#330000';ctx.fillRect(e.x-8,e.y-26,e.w+16,7);ctx.fillStyle='#ff4757';ctx.fillRect(e.x-8,e.y-26,(e.w+16)*(e.hp/e.maxHp),7);
+    ctx.fillStyle='rgba(255,71,87,0.8)';ctx.font='bold 8px Courier New';ctx.textAlign='center';ctx.fillText('DARK KNIGHT',e.x+e.w/2,e.y-32);
+  }else{
+    ctx.fillStyle=fl?'#fff':'#cc4500';ctx.beginPath();ctx.arc(e.x+e.w/2,e.y+e.h/2+4,e.w/2,0,Math.PI*2);ctx.fill();
+    const d=e.vx<0?-4:4;
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(e.x+e.w/2+d-3,e.y+e.h*.42,4,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(e.x+e.w/2+d+3,e.y+e.h*.42,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#111';ctx.beginPath();ctx.arc(e.x+e.w/2+d-3,e.y+e.h*.42,2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(e.x+e.w/2+d+3,e.y+e.h*.42,2,0,Math.PI*2);ctx.fill();
+  }
+}
+
+function updateHUD(){
+  const hp=Math.max(0,player.hp);
+  const hc=hp>60?'#39ff8f':hp>30?'#ff6b35':'#ff4757';
+  document.getElementById('hpBar').style.width=hp+'%';document.getElementById('hpBar').style.background=hc;
+  document.getElementById('hpNum').textContent=hp;document.getElementById('hpNum').style.color=hc;
+  document.getElementById('eEl').textContent=enemies.length;
+  document.getElementById('scoreEl').textContent=score;
+}
+
+function loop(){
+  if(!running)return;
+  frame++;autoWalk();updatePlayer();updateEnemies();updateParticles();updateHUD();draw();
+  requestAnimationFrame(loop);
+}
+
+function startGame(){
+  document.getElementById('overlay').classList.remove('show');
+  if(!running){running=true;initGame();loop()}
+  else initGame();
+  clearTimeout(sceneTimer);
+  setTimeout(()=>runScene(0),400);
+}
+
+buildChapterList();
+document.getElementById('ovBtn').addEventListener('click',()=>{clearTimeout(sceneTimer);stopMusic();startGame()});
+</script>
+</body>
+</html>
