@@ -73,17 +73,17 @@ To see DevTune in action, we've included a playable 2D RPG demo called **Shadow 
 
 ---
 
-##Hackathon Project
+### Hackathon Project
 
 This project was built as part of a hackathon. It showcases a rapid prototype developed under time constraints, focusing on creativity, practicality, and impact.
 
 ### 🎥 Demo
 Watch the project in action:  
-[YouTube Demo](YOUR_YOUTUBE_LINK_HERE)
+[YouTube Demo](https://www.youtube.com/watch?v=D4g8J8dPx8A)
 
 ### 📊 Dataset / Notebook
 Explore the data and experiments on Kaggle:  
-[Kaggle Project](YOUR_KAGGLE_LINK_HERE)
+[Kaggle Project](https://www.kaggle.com/competitions/ucla-gemini-api-hackathon/writeups/devtune-koala-koders)
 
 ---
 
