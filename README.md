@@ -73,15 +73,7 @@ To see DevTune in action, we've included a playable 2D RPG demo called **Shadow 
 
 ---
 
-## 🔧 Troubleshooting
-
-* **"Port already in use" error:** If you get this when starting your server, you have another server running. Press `Ctrl + C` in your terminal to stop the old one, or use a different port (e.g., `python -m http.server 8081`).
-* **Live Server button not showing:** Make sure you have opened the entire project *folder* in VS Code (File > Open Folder), not just individual files.
-
----
 
 ## 🤝 Contributing
 Since this is a hackathon project, we are open to rapid pull requests! Feel free to fork the repo, create a feature branch, and submit a PR.
 
-## 📄 License
-MIT License
