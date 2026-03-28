@@ -1,4 +1,5 @@
 # 🎵 DevTune: AI-Generated Original Soundtracks from Game Code
+<img width="957" height="536" alt="0645de289065ad1509e836746a347ec0" src="https://github.com/user-attachments/assets/9c270aeb-31bf-49b1-a719-ffd2edf7e5a7" />
 
 DevTune is an intelligent tool that analyzes your game's source code to automatically generate a cohesive, original soundtrack tailored to your gameplay.
 
