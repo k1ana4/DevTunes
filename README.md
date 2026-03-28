@@ -73,6 +73,19 @@ To see DevTune in action, we've included a playable 2D RPG demo called **Shadow 
 
 ---
 
+##Hackathon Project
+
+This project was built as part of a hackathon. It showcases a rapid prototype developed under time constraints, focusing on creativity, practicality, and impact.
+
+### 🎥 Demo
+Watch the project in action:  
+[YouTube Demo](YOUR_YOUTUBE_LINK_HERE)
+
+### 📊 Dataset / Notebook
+Explore the data and experiments on Kaggle:  
+[Kaggle Project](YOUR_KAGGLE_LINK_HERE)
+
+---
 
 ## 🤝 Contributing
 Since this is a hackathon project, we are open to rapid pull requests! Feel free to fork the repo, create a feature branch, and submit a PR.
